@@ -19,6 +19,7 @@ export declare class Dialog {
     private createCurrentCustomerMessage;
     private createCurrentTanMessage;
     private handlePartedMessages;
+    private createContinuationMessage;
     private checkEnded;
     private getHttpClient;
 }
