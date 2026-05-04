@@ -9,7 +9,16 @@ export class HttpClient {
 
 	async sendMessage(message: CustomerMessage): Promise<Message> {
 		const encodedMessage = message.encode();
-		const requestBuffer = Buffer.from(encodedMessage);
+		// FinTS messages are required to be ISO-8859-1 (Latin-1) on the wire, and
+		// `Message#encode` builds the message as a JS string whose code units are
+		// expected to be 1:1 Latin-1 bytes (the HNHBK header sets `messageLength`
+		// to `encodedMessage.length`, i.e. character count). Using `Buffer.from`
+		// without an explicit encoding defaults to UTF-8, so any non-ASCII byte
+		// (e.g. umlauts in `userId`) is sent as a multi-byte UTF-8 sequence —
+		// which causes the message length to disagree with the actual byte count
+		// and the response side to misinterpret bytes. Banks reject this with
+		// FinTS code 9110 "ungültige Binärdaten" and abort the dialog.
+		const requestBuffer = Buffer.from(encodedMessage, 'latin1');
 
 		if (this.debug) {
 			console.log('Request Message:\n');

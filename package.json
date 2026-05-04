@@ -23,7 +23,7 @@
 		"build": "rm -rf ./dist && tsc",
 		"pack": "pnpm run build && pnpm pack --pack-destination ~/npm-repo",
 		"test": "vitest",
-		"preprepare": "pnpm run build"
+		"prepare": "tsc"
 	},
 	"keywords": [
 		"FinTS",
