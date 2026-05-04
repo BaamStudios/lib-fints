@@ -326,12 +326,24 @@ export class Dialog {
 				const nextResponseMessage = await this.httpClient.sendMessage(nextRequestMessage);
 				const nextPartedSegment = nextResponseMessage.findSegment<PartedSegment>(PARTED.Id);
 
-				if (nextPartedSegment) {
-					nextPartedSegment.rawData =
-						partedSegment.rawData +
-						nextPartedSegment.rawData.slice(nextPartedSegment.rawData.indexOf('+') + 1);
-					partedSegment = nextPartedSegment;
+				if (!nextPartedSegment) {
+					// The bank refused to deliver more data on this continuation. The
+					// most common reason against PIN/TAN banks is that every HKKAZ
+					// request — including a pure pagination continuation — is gated by
+					// SCA (return code 9370 "Anzahl Signaturen für diesen Auftrag
+					// unzureichend"), so handing pagination off through a synchronous
+					// loop is impossible. Stop the loop and keep the previously
+					// received parts so the caller still gets a partial result. The
+					// surviving 3040 in `responseMessage` signals to upstream that the
+					// result is incomplete; the caller can decide whether to issue a
+					// fresh, separately authenticated continuation request.
+					break;
 				}
+
+				nextPartedSegment.rawData =
+					partedSegment.rawData +
+					nextPartedSegment.rawData.slice(nextPartedSegment.rawData.indexOf('+') + 1);
+				partedSegment = nextPartedSegment;
 
 				currentRequestMessage = nextRequestMessage;
 				responseMessage = nextResponseMessage;
