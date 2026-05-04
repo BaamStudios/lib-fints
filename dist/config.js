@@ -15,6 +15,19 @@ export class FinTSConfig {
     country;
     bankingInformation;
     debugEnabled = false;
+    /**
+     * Opt-in: when an order response triggers pagination via return code 3040,
+     * append a continuation HKTAN with `tanProcess: 2` and the original TAN's
+     * `orderRef` to the continuation request, instead of sending it without any
+     * HKTAN. This lets the bank treat the continuation as covered by the
+     * already-confirmed TAN — required when the bank flags every business
+     * transaction as `tanRequired`, but signals `multipleTans: true` and
+     * `tanDialogOptions: 2` for the active TAN method.
+     *
+     * Default false to preserve the historical behavior. Disable for banks that
+     * reject HKTAN-on-continuation with `tanProcess: 2`.
+     */
+    reuseTanForPagination = false;
     constructor(productId, productVersion, url, bankIdentification, userId, pin, bankingInformation, tanMethodId, tanMediaName, customerId, country = 280) {
         this.productId = productId;
         this.productVersion = productVersion;

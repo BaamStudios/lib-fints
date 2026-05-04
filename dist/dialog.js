@@ -50,6 +50,9 @@ export class Dialog {
             const responseMessage = await this.httpClient.sendMessage(message);
             await this.handlePartedMessages(message, responseMessage, this.currentInteraction);
             clientResponse = this.currentInteraction.handleClientResponse(responseMessage);
+            // Note: pagination on the initial-call path doesn't get a TAN orderRef.
+            // If the bank requires SCA per HKKAZ, the first response itself is a
+            // HITAN/3955 — pagination only happens later via Dialog.continue.
             this.checkEnded(clientResponse);
             this.dialogId = clientResponse.dialogId;
             this.responses.set(this.currentInteraction.segId, clientResponse);
@@ -85,7 +88,7 @@ export class Dialog {
                 ? this.createCurrentTanMessage(tanOrderReference, tan)
                 : this.createCurrentCustomerMessage();
             const responseMessage = await this.httpClient.sendMessage(message);
-            await this.handlePartedMessages(message, responseMessage, this.currentInteraction);
+            await this.handlePartedMessages(message, responseMessage, this.currentInteraction, tanOrderReference);
             clientResponse = this.currentInteraction.handleClientResponse(responseMessage);
             this.checkEnded(clientResponse);
             this.dialogId = clientResponse.dialogId;
@@ -182,7 +185,7 @@ export class Dialog {
         }
         return message;
     }
-    async handlePartedMessages(message, responseMessage, interaction) {
+    async handlePartedMessages(message, responseMessage, interaction, tanOrderReference) {
         let partedSegment = responseMessage.findSegment(PARTED.Id);
         if (partedSegment) {
             let currentRequestMessage = message;
@@ -218,7 +221,7 @@ export class Dialog {
                     if (!(interaction instanceof CustomerOrderInteraction)) {
                         throw new Error(`Response contains segment with further information, but corresponding segment could not be found or is not specified`);
                     }
-                    nextRequestMessage = this.createContinuationMessage(interaction, continuationMark);
+                    nextRequestMessage = this.createContinuationMessage(interaction, continuationMark, tanOrderReference);
                 }
                 const nextResponseMessage = await this.httpClient.sendMessage(nextRequestMessage);
                 const nextPartedSegment = nextResponseMessage.findSegment(PARTED.Id);
@@ -256,7 +259,7 @@ export class Dialog {
             }
         }
     }
-    createContinuationMessage(interaction, continuationMark) {
+    createContinuationMessage(interaction, continuationMark, tanOrderReference) {
         this.lastMessageNumber++;
         const message = new CustomerOrderMessage(interaction.segId, interaction.responseSegId, this.dialogId, this.lastMessageNumber);
         if (this.config.userId && this.config.pin) {
@@ -268,6 +271,31 @@ export class Dialog {
                 segment.continuationMark = continuationMark;
             }
             message.addSegment(segment);
+        }
+        // Opt-in: when the bank flags every business transaction as tanRequired
+        // but signals `multipleTans: true` and `tanDialogOptions: 2` for the
+        // active TAN method, a paginated continuation can be authorized by the
+        // already-confirmed TAN if the request carries an HKTAN that references
+        // the original TAN's orderRef (tanProcess: 2). Without this segment
+        // banks like Sparkasse Hildesheim reject the continuation with code
+        // 9370 "Anzahl Signaturen für diesen Auftrag unzureichend".
+        if (this.config.reuseTanForPagination &&
+            tanOrderReference &&
+            this.config.userId &&
+            this.config.pin &&
+            this.config.tanMethodId) {
+            const hktan = {
+                header: {
+                    segId: HKTAN.Id,
+                    segNr: 0,
+                    version: this.config.selectedTanMethod?.version ?? 0,
+                },
+                tanProcess: TanProcess.Process2,
+                segId: interaction.segId,
+                orderRef: tanOrderReference,
+                nextTan: false,
+            };
+            message.addSegment(hktan);
         }
         return message;
     }
