@@ -1,0 +1,66 @@
+import { Message } from './message.js';
+export class HttpClient {
+    url;
+    debug;
+    debugRaw;
+    constructor(url, debug = false, debugRaw = false) {
+        this.url = url;
+        this.debug = debug;
+        this.debugRaw = debugRaw;
+    }
+    async sendMessage(message) {
+        const encodedMessage = message.encode();
+        // FinTS messages are required to be ISO-8859-1 (Latin-1) on the wire, and
+        // `Message#encode` builds the message as a JS string whose code units are
+        // expected to be 1:1 Latin-1 bytes (the HNHBK header sets `messageLength`
+        // to `encodedMessage.length`, i.e. character count). Using `Buffer.from`
+        // without an explicit encoding defaults to UTF-8, so any non-ASCII byte
+        // (e.g. umlauts in `userId`) is sent as a multi-byte UTF-8 sequence —
+        // which causes the message length to disagree with the actual byte count
+        // and the response side to misinterpret bytes. Banks reject this with
+        // FinTS code 9110 "ungültige Binärdaten" and abort the dialog.
+        const requestBuffer = Buffer.from(encodedMessage, 'latin1');
+        if (this.debug) {
+            console.log('Request Message:\n');
+            if (this.debugRaw) {
+                console.log(encodedMessage.split("'").join('\n'));
+            }
+            else {
+                console.log(message.toString());
+            }
+        }
+        const response = await fetch(this.url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: requestBuffer.toString('base64'),
+        });
+        if (response.ok) {
+            const responseBuffer = Buffer.from(await response.text(), 'base64');
+            const responseText = responseBuffer.toString('latin1');
+            try {
+                const customerOrderMessage = message;
+                const responseMessage = Message.decode(responseText, customerOrderMessage.supportsPartedResponseSegments
+                    ? customerOrderMessage.orderResponseSegId
+                    : undefined);
+                if (this.debug) {
+                    console.log('Response Message:\n');
+                    if (this.debugRaw) {
+                        console.log(responseText.split("'").join('\n'));
+                    }
+                    else {
+                        console.log(`Response Message:\n${responseMessage.toString(true)}\n`);
+                    }
+                }
+                return responseMessage;
+            }
+            catch (error) {
+                console.error('Error decoding response message:', error);
+                console.error('Response Message Content:\n', responseText.split("'").join('\n'));
+                throw error;
+            }
+        }
+        else {
+            throw Error(`Request failed with status code ${response.status}: ${await response.text()}`);
+        }
+    }
+}
