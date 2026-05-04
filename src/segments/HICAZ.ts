@@ -28,7 +28,24 @@ export class HICAZ extends SegmentDefinition {
 	elements = [
 		new InternationalAccountGroup('account', 1, 1),
 		new Text('camtDescriptor', 1, 1), // camt-Descriptor (single format used)
-		new DataGroup('bookedTransactions', [new Binary('camtMessage', 1, 99)], 1, 1), // Booked CAMT transactions
-		new DataGroup('notedTransactions', [new Binary('camtMessage', 1, 99)], 0, 1), // Noted CAMT transactions
+		// `Binary` constructor signature is (name, minCount, maxCount, maxLength).
+		// Earlier versions of this file passed `99` here, which the decoder
+		// interpreted as "stop after 99 messages" — fine for short statements,
+		// but a long account-statement query against an active account can
+		// easily produce hundreds of per-day CAMT reports, and everything
+		// past the 99th was silently discarded. Use Number.MAX_SAFE_INTEGER
+		// like HIKAZ does for the equivalent MT940 buffer.
+		new DataGroup(
+			'bookedTransactions',
+			[new Binary('camtMessage', 1, Number.MAX_SAFE_INTEGER)],
+			1,
+			1,
+		), // Booked CAMT transactions
+		new DataGroup(
+			'notedTransactions',
+			[new Binary('camtMessage', 1, Number.MAX_SAFE_INTEGER)],
+			0,
+			1,
+		), // Noted CAMT transactions
 	];
 }
