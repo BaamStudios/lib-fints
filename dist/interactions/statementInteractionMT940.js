@@ -6,11 +6,13 @@ export class StatementInteractionMT940 extends CustomerOrderInteraction {
     accountNumber;
     from;
     to;
-    constructor(accountNumber, from, to) {
+    continuationMark;
+    constructor(accountNumber, from, to, continuationMark) {
         super(HKKAZ.Id, HIKAZ.Id);
         this.accountNumber = accountNumber;
         this.from = from;
         this.to = to;
+        this.continuationMark = continuationMark;
     }
     createSegments(init) {
         const bankAccount = init.getBankAccount(this.accountNumber);
@@ -25,6 +27,7 @@ export class StatementInteractionMT940 extends CustomerOrderInteraction {
             allAccounts: false,
             from: this.from,
             to: this.to,
+            continuationMark: this.continuationMark,
         };
         return [hkkaz];
     }

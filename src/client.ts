@@ -150,6 +150,7 @@ export class FinTSClient {
 	 * @param from - an optional start date of the period to fetch the statements for
 	 * @param to - an optional end date of the period to fetch the statements for
 	 * @param preferCamt - whether to prefer CAMT format over MT940 when both are supported (default: true)
+	 * @param continuationMark - optional continuation mark from a previous response that signalled return code 3040 ("Es liegen weitere Informationen vor"); when set, the request asks the bank to resume from that mark instead of returning the head of the period again
 	 * @returns an account statements response containing an array of statements
 	 */
 	async getAccountStatements(
@@ -157,6 +158,7 @@ export class FinTSClient {
 		from?: Date,
 		to?: Date,
 		preferCamt: boolean = true,
+		continuationMark?: string,
 	): Promise<StatementResponse> {
 		// Check what formats the bank supports
 		const camtSupported = this.config.isAccountTransactionSupported(accountNumber, 'HKCAZ');
@@ -171,11 +173,11 @@ export class FinTSClient {
 
 		if (useCAMT) {
 			return (await this.startCustomerOrderInteraction(
-				new StatementInteractionCAMT(accountNumber, from, to),
+				new StatementInteractionCAMT(accountNumber, from, to, continuationMark),
 			)) as StatementResponse;
 		} else {
 			return (await this.startCustomerOrderInteraction(
-				new StatementInteractionMT940(accountNumber, from, to),
+				new StatementInteractionMT940(accountNumber, from, to, continuationMark),
 			)) as StatementResponse;
 		}
 	}

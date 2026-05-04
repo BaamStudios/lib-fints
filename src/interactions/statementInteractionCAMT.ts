@@ -13,6 +13,7 @@ export class StatementInteractionCAMT extends CustomerOrderInteraction {
 		public accountNumber: string,
 		public from?: Date,
 		public to?: Date,
+		public continuationMark?: string,
 	) {
 		super(HKCAZ.Id, HICAZ.Id);
 	}
@@ -41,6 +42,7 @@ export class StatementInteractionCAMT extends CustomerOrderInteraction {
 			allAccounts: false,
 			from: this.from,
 			to: this.to,
+			continuationMark: this.continuationMark,
 		};
 
 		return [hkcaz];

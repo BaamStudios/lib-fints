@@ -6,11 +6,13 @@ export class StatementInteractionCAMT extends CustomerOrderInteraction {
     accountNumber;
     from;
     to;
-    constructor(accountNumber, from, to) {
+    continuationMark;
+    constructor(accountNumber, from, to, continuationMark) {
         super(HKCAZ.Id, HICAZ.Id);
         this.accountNumber = accountNumber;
         this.from = from;
         this.to = to;
+        this.continuationMark = continuationMark;
     }
     createSegments(init) {
         const bankAccount = init.getBankAccount(this.accountNumber);
@@ -30,6 +32,7 @@ export class StatementInteractionCAMT extends CustomerOrderInteraction {
             allAccounts: false,
             from: this.from,
             to: this.to,
+            continuationMark: this.continuationMark,
         };
         return [hkcaz];
     }

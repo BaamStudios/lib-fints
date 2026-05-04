@@ -11,6 +11,7 @@ export class StatementInteractionMT940 extends CustomerOrderInteraction {
 		public accountNumber: string,
 		public from?: Date,
 		public to?: Date,
+		public continuationMark?: string,
 	) {
 		super(HKKAZ.Id, HIKAZ.Id);
 	}
@@ -30,6 +31,7 @@ export class StatementInteractionMT940 extends CustomerOrderInteraction {
 			allAccounts: false,
 			from: this.from,
 			to: this.to,
+			continuationMark: this.continuationMark,
 		};
 
 		return [hkkaz];

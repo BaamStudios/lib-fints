@@ -6,7 +6,8 @@ export declare class StatementInteractionCAMT extends CustomerOrderInteraction {
     accountNumber: string;
     from?: Date | undefined;
     to?: Date | undefined;
-    constructor(accountNumber: string, from?: Date | undefined, to?: Date | undefined);
+    continuationMark?: string | undefined;
+    constructor(accountNumber: string, from?: Date | undefined, to?: Date | undefined, continuationMark?: string | undefined);
     createSegments(init: FinTSConfig): Segment[];
     handleResponse(response: Message, clientResponse: StatementResponse): void;
 }
